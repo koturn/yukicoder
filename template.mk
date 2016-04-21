@@ -23,7 +23,6 @@ endif
 endif
 endif
 
-
 WARNING_CFLAGS := -Wall -Wextra -Wformat=2 -Wstrict-aliasing=2 \
                   -Wcast-align -Wcast-qual -Wconversion \
                   -Wfloat-equal -Wpointer-arith -Wswitch-enum \
@@ -31,18 +30,23 @@ WARNING_CFLAGS := -Wall -Wextra -Wformat=2 -Wstrict-aliasing=2 \
 WARNING_CXXFLAGS := $(WARNING_CFLAGS) -Weffc++ -Woverloaded-virtual
 
 
-CC       := gcc
-CXX      := g++
-CAT      := cat
-ECHO     := echo
-CFLAGS   := -std=gnu++11 -pipe -fdiagnostics-color=always $(WARNING_CFLAGS) $(OPT_CFLAGS)
-CXXFLAGS := -std=gnu++11 -pipe -fdiagnostics-color=always $(WARNING_CXXFLAGS) $(OPT_CXXFLAGS)
-LDFLAGS  := -pipe $(OPT_LDFLAGS)
-LDLIBS   := $(OPT_LDLIBS)
-TARGET   := main
-OBJ      := $(addsuffix .o, $(basename $(TARGET)))
-SRC      := $(OBJ:.o=.cpp)
-INPUTS   := $(sort $(wildcard input*.txt))
+CC           := gcc
+CXX          := g++
+ECHO         := echo
+CAT          := cat
+MKDIR        := mkdir -p
+CP           := cp
+RM           := rm -f
+CTAGS        := ctags
+CFLAGS       := -pipe -std=gnu11 $(WARNING_CFLAGS) $(OPT_CFLAGS)
+CXXFLAGS     := -pipe -std=gnu++11 $(WARNING_CXXFLAGS) $(OPT_CXXFLAGS)
+LDFLAGS      := -pipe $(OPT_LDFLAGS)
+LDLIBS       := $(OPT_LDLIBS)
+CTAGSFLAGS   := -R --languages=c,c++
+TARGET       := main
+SRCS         := $(addsuffix .cpp, $(basename $(TARGET)))
+OBJS         := $(SRCS:.cpp=.o)
+INPUTS       := $(sort $(wildcard input*.txt))
 
 ifeq ($(OS),Windows_NT)
     TARGET := $(addsuffix .exe, $(TARGET))
@@ -50,24 +54,20 @@ else
     TARGET := $(addsuffix .out, $(TARGET))
 endif
 
-.SUFFIXES: .exe .o .out
-.o.exe:
-	$(CXX) $(LDFLAGS) $(filter %.c %.o, $^) $(LDLIBS) -o $@
-.o.out:
-	$(CXX) $(LDFLAGS) $(filter %.c %.o, $^) $(LDLIBS) -o $@
-.o:
-	$(CXX) $(LDFLAGS) $(filter %.c %.o, $^) $(LDLIBS) -o $@
+%.exe:
+	$(CXX) $(LDFLAGS) $(filter %.c %.cpp %.cxx %.cc %.o, $^) $(LDLIBS) -o $@
+%.out:
+	$(CXX) $(LDFLAGS) $(filter %.c %.cpp %.cxx %.cc %.o, $^) $(LDLIBS) -o $@
 
 
-.PHONY: all
+.PHONY: all depends test syntax ctags clean cleanobj
 all: $(TARGET)
 
-$(TARGET): $(OBJ)
+$(TARGET): $(OBJS)
 
-$(OBJ): $(SRC)
+$(OBJS): $(SRCS)
 
 
-.PHONY: test
 test: $(TARGET)
 	@for input in $(INPUTS); do \
 		i=`expr $$i + 1`; \
@@ -78,10 +78,14 @@ test: $(TARGET)
 		$(ECHO); \
 	done
 
+syntax:
+	$(CXX) $(SRCS) $(STD_CXXFLAGS) -fsyntax-only $(WARNING_CXXFLAGS) $(INCS) $(MACROS)
 
-.PHONY: clean
+ctags:
+	$(CTAGS) $(CTAGSFLAGS)
+
 clean:
-	$(RM) $(TARGET) $(OBJ)
-.PHONY: cleanobj
+	$(RM) $(TARGET) $(OBJS)
+
 cleanobj:
-	$(RM) $(OBJ)
+	$(RM) $(OBJS)
